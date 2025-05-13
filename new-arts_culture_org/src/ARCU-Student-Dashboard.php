@@ -67,6 +67,22 @@ try {
     $events = [];
 }
 
+// Fetch student's club applications
+$clubApplications = [];
+try {
+    $stmt = $pdo->prepare('
+        SELECT cm.*, c.club_name 
+        FROM club_members cm 
+        LEFT JOIN clubs c ON cm.interests = c.club_name 
+        WHERE cm.student_id = ? 
+        ORDER BY cm.id DESC
+    ');
+    $stmt->execute([$_SESSION['acc_id']]);
+    $clubApplications = $stmt->fetchAll();
+} catch (PDOException $e) {
+    $clubApplications = [];
+}
+
 // Handle Join Club form submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['studentName'], $_POST['studentId'], $_POST['email'], $_POST['interests'], $_POST['whyJoin'])) {
     $studentName = trim($_POST['studentName']);
@@ -80,13 +96,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['studentName'], $_POST
         try {
             $stmt = $pdo->prepare('INSERT INTO club_members (student_name, student_id, email, phone, interests, why_join) VALUES (?, ?, ?, ?, ?, ?)');
             $stmt->execute([$studentName, $studentId, $email, $phone, $interests, $whyJoin]);
-            $successMessage = 'Successfully joined the club!';
+            // Redirect to avoid form resubmission
+            header("Location: " . $_SERVER['PHP_SELF'] . "?success=1");
+            exit();
         } catch (PDOException $e) {
             $errors[] = 'Error joining club: ' . $e->getMessage();
         }
     } else {
         $errors[] = 'Please fill in all required fields.';
     }
+}
+
+// Show success message if redirected
+if (isset($_GET['success']) && $_GET['success'] == 1) {
+    $successMessage = 'Successfully joined the club!';
 }
 
 // Handle student attendance form submission
@@ -122,7 +145,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['record_attendance']))
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Student Dashboard</title>
     <link rel="stylesheet" href="main.css" />
-    <link rel="stylesheet" href="../node_modules/bootstrap-icons/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <script src="../node_modules/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
     <style>
         body {
@@ -164,10 +187,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['record_attendance']))
         .sidebar .nav-link.active {
             color: white;
             background-color: rgba(255, 255, 255, 0.2);
+
         }
+        .sidebar .bi {
+            color: #fff !important;
+            opacity: 1 !important;
+        }
+        
         .card {
             border-radius: 10px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 4px 6px rgba(255, 255, 255, 0.1);
             transition: transform 0.3s, box-shadow 0.3s;
         }
         .card:hover {
@@ -247,12 +276,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['record_attendance']))
             </div>
 
             <div class="dropdown">
-                <div class="d-flex align-items-center text-white" role="button" id="adminDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                <button class="d-flex align-items-center text-white dropdown-toggle bg-transparent border-0" id="adminDropdown" data-bs-toggle="dropdown" aria-expanded="false" type="button" style="box-shadow:none;">
                     <span class="me-2 d-none d-md-inline">Student Panel</span>
                     <div class="admin-logo" aria-label="Student Panel Logo">
                         S
                     </div>
-                </div>
+                </button>
                 <ul class="dropdown-menu dropdown-menu-dark" aria-labelledby="adminDropdown">
                     <li><a class="dropdown-item" href="#"><i class="bi bi-gear me-2"></i>Manage Account</a></li>
                     <li><hr class="dropdown-divider" /></li>
@@ -269,32 +298,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['record_attendance']))
                     <ul class="nav flex-column">
                         <li class="nav-item">
                             <a class="nav-link active" href="#" data-section="dashboardSection">
-                                <i class="bi bi-house"></i>
-                                Home
+                                <i class="bi bi-house me-2"></i>Home
                             </a>
                         </li>
                         <li class="nav-item">
                             <a class="nav-link" href="#" data-section="eventsSection">
-                                <i class="bi bi-calendar-event"></i>
-                                Events
+                                <i class="bi bi-calendar-event me-2"></i>Events
                             </a>
                         </li>
                         <li class="nav-item">
                             <a class="nav-link" href="#" data-section="attendanceSection">
-                                <i class="bi bi-people"></i>
-                                Attendance
+                                <i class="bi bi-people me-2"></i>Attendance
                             </a>
                         </li>
                         <li class="nav-item">
                             <a class="nav-link" href="#" data-section="gallerySection" id="navGallery">
-                                <i class="bi bi-images"></i>
-                                Gallery
+                                <i class="bi bi-images me-2"></i>Gallery
                             </a>
                         </li>
                         <li class="nav-item">
                             <a class="nav-link" href="#" data-section="joinClubSection" id="navJoinClub">
-                                <i class="bi bi-collection"></i>
-                                Clubs
+                                <i class="bi bi-collection me-2"></i>Clubs
                             </a>
                         </li>
                     </ul>
@@ -320,41 +344,128 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['record_attendance']))
                 <?php endif; ?>
                 <section id="dashboardSection" class="section-container">
                     <h2 class="section-title">Welcome to Your Dashboard</h2>
-                    <div class="row">
-                        <div class="col-md-6 col-lg-4">
-                            <div class="card">
-                                <div class="card-header">
+                    <div class="row g-4 mb-4">
+                        <div class="col-md-4">
+                            <div class="card h-100 shadow-sm">
+                                <div class="card-header bg-secondary text-white fw-bold text-center">
                                     Upcoming Events
                                 </div>
                                 <div class="card-body">
                                     <p class="card-text">Check out the latest events happening this week.</p>
-                                    <a href="#" class="btn btn-primary" id="btnViewEvents">View Events</a>
+                                    <a href="#" class="btn btn-primary w-100" id="btnViewEvents">View Events</a>
                                 </div>
                             </div>
                         </div>
-
-                        <div class="col-md-6 col-lg-4">
-                            <div class="card">
-                                <div class="card-header">
+                        <div class="col-md-4">
+                            <div class="card h-100 shadow-sm">
+                                <div class="card-header bg-secondary text-white fw-bold text-center">
                                     Attendance Records
                                 </div>
                                 <div class="card-body">
                                     <p class="card-text">View and manage your attendance records.</p>
-                                    <a href="#" class="btn btn-primary" id="btnViewAttendance">View Attendance</a>
+                                    <a href="#" class="btn btn-primary w-100" id="btnViewAttendance">View Attendance</a>
                                 </div>
                             </div>
                         </div>
-
-                        <div class="col-md-6 col-lg-4">
-                            <div class="card">
-                                <div class="card-header">
+                        <div class="col-md-4">
+                            <div class="card h-100 shadow-sm">
+                                <div class="card-header bg-secondary text-white fw-bold text-center">
                                     Join a Club
                                 </div>
                                 <div class="card-body">
                                     <p class="card-text">Explore and join various clubs and organizations.</p>
-                                    <a href="#" class="btn btn-primary" id="btnJoinNow">Join Now</a>
+                                    <a href="#" class="btn btn-primary w-100" id="btnJoinNow">Join Now</a>
+                                    <?php if (!empty($clubApplications)): ?>
+                                        <div class="mt-3">
+                                            <h6>Your Applications</h6>
+                                            <div class="table-responsive">
+                                                <table class="table table-sm">
+                                                    <thead>
+                                                        <tr>
+                                                            <th>Club</th>
+                                                            <th>Status</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        <?php foreach ($clubApplications as $application): ?>
+                                                            <tr>
+                                                                <td><?= htmlspecialchars($application['club_name'] ?? $application['interests']) ?></td>
+                                                                <td>
+                                                                    <?php
+                                                                    $statusClass = 'bg-warning';
+                                                                    $statusText = 'Pending';
+                                                                    if ($application['status'] === 'accepted') {
+                                                                        $statusClass = 'bg-success';
+                                                                        $statusText = 'Accepted';
+                                                                    } elseif ($application['status'] === 'declined') {
+                                                                        $statusClass = 'bg-danger';
+                                                                        $statusText = 'Declined';
+                                                                    }
+                                                                    ?>
+                                                                    <span class="badge <?= $statusClass ?>">
+                                                                        <?= $statusText ?>
+                                                                    </span>
+                                                                </td>
+                                                            </tr>
+                                                        <?php endforeach; ?>
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    <?php endif; ?>
                                 </div>
                             </div>
+                        </div>
+                    </div>
+                    <!-- All Club Members Table -->
+                    <div class="mt-4">
+                        <h4>All Club Members</h4>
+                        <div class="table-responsive">
+                            <table class="table table-bordered table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>Name</th>
+                                        <th>Student ID</th>
+                                        <th>Email</th>
+                                        <th>Phone</th>
+                                        <th>Interests</th>
+                                        <th>Why Join</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php
+                                    $allClubMembers = [];
+                                    try {
+                                        $stmt = $pdo->query('SELECT * FROM club_members ORDER BY id DESC');
+                                        $allClubMembers = $stmt->fetchAll();
+                                    } catch (PDOException $e) {
+                                        $allClubMembers = [];
+                                    }
+                                    if (!empty($allClubMembers)):
+                                        foreach ($allClubMembers as $member): ?>
+                                            <tr>
+                                                <td><?= htmlspecialchars($member['student_name']) ?></td>
+                                                <td><?= htmlspecialchars($member['student_id']) ?></td>
+                                                <td><?= htmlspecialchars($member['email']) ?></td>
+                                                <td><?= htmlspecialchars($member['phone']) ?></td>
+                                                <td><?= htmlspecialchars($member['interests']) ?></td>
+                                                <td><?= htmlspecialchars($member['why_join']) ?></td>
+                                                <td>
+                                                    <span class="badge <?=
+                                                        $member['status'] === 'accepted' ? 'bg-success' :
+                                                        ($member['status'] === 'declined' ? 'bg-danger' : 'bg-warning')
+                                                    ?>">
+                                                        <?= ucfirst($member['status'] ?? 'pending') ?>
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        <?php endforeach;
+                                    else: ?>
+                                        <tr><td colspan="7" class="text-center">No club members found.</td></tr>
+                                    <?php endif; ?>
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 </section>
@@ -608,5 +719,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['record_attendance']))
             });
         });
     </script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

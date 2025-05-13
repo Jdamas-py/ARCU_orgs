@@ -233,6 +233,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_member_id'])) 
     }
 }
 
+// Handle club member status update
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_member_status'])) {
+    $memberId = (int)$_POST['member_id'];
+    $status = $_POST['status'];
+    error_log('DEBUG: memberId=' . $memberId . ', status=' . $status);
+    if ($memberId > 0 && in_array($status, ['accepted', 'declined'])) {
+        try {
+            $stmt = $pdo->prepare('UPDATE club_members SET status = ? WHERE id = ?');
+            $stmt->execute([$status, $memberId]);
+            $clubSuccess = 'Club member status updated successfully!';
+            error_log('DEBUG: Update successful');
+        } catch (PDOException $e) {
+            $clubError = 'Error updating club member status: ' . $e->getMessage();
+            error_log('DEBUG: Update failed: ' . $e->getMessage());
+        }
+    } else {
+        error_log('DEBUG: Invalid memberId or status');
+    }
+}
+
 // Handle image upload
 $gallerySuccess = '';
 $galleryError = '';
@@ -386,7 +406,8 @@ try {
         <link rel="icon" href="../img/ARCULOGO.png" />
 
         <link rel="stylesheet" href="main.css" />
-        <link rel="stylesheet" href="../node_modules/bootstrap-icons/font/bootstrap-icons.min.css" />
+        <!-- <link rel="stylesheet" href="../node_modules/bootstrap-icons/font/bootstrap-icons.min.css"> -->
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
         <script src="../node_modules/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
 
         <style>
@@ -418,6 +439,10 @@ try {
             }
             .sidebar.collapsed .sidebar-expand-btn {
                 display: block;
+                .sidebar .bi {
+    color: #fff !important;
+    opacity: 1 !important;
+}
             }
             .main-content {
                 transition: all 0.3s;
@@ -483,6 +508,14 @@ try {
                 display: inline-block;
                 margin: 0;
             }
+            .transition-arrow {
+                transition: transform 0.3s;
+            }
+            .collapse.show + .transition-arrow,
+            .sidebar .bi {
+                color: #fff !important;
+                opacity: 1 !important;
+            }
         </style>
     </head>
     <body>
@@ -499,12 +532,12 @@ try {
                 </div>
 
                 <div class="dropdown">
-                    <div class="d-flex align-items-center text-white" role="button" id="adminDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                    <button class="d-flex align-items-center text-white dropdown-toggle bg-transparent border-0" id="adminDropdown" data-bs-toggle="dropdown" aria-expanded="false" type="button" style="box-shadow:none;">
                         <span class="me-2 d-none d-md-inline">Admin Panel</span>
                         <div class="admin-logo" aria-label="Admin Panel Logo">
                             A
                         </div>
-                    </div>
+                    </button>
                     <ul class="dropdown-menu dropdown-menu-dark" aria-labelledby="adminDropdown">
                         <li><a class="dropdown-item" href="#"><i class="bi bi-gear me-2"></i>Manage Account</a></li>
                         <li><hr class="dropdown-divider" /></li>
@@ -525,62 +558,47 @@ try {
                         <ul class="nav flex-column">
                             <li class="nav-item">
                                 <a class="nav-link" href="#" data-section="dashboardSection" id="navDashboard">
-                                    <i class="bi bi-house"></i>
-                                    Home
+                                    <i class="bi bi-house me-2"></i>Home
                                 </a>
                             </li>
-
                             <li class="nav-item">
-                                <a class="nav-link" data-bs-toggle="collapse" href="#eventsSubMenu" role="button" aria-expanded="true" aria-controls="eventsSubMenu">
-                                    <i class="bi bi-calendar-event me-2"></i>
-                                    Events
-                                    <i class="bi bi-chevron-down ms-2"></i>
+                                <a class="nav-link d-flex justify-content-between align-items-center" data-bs-toggle="collapse" href="#eventsSubMenu" role="button" aria-expanded="false" aria-controls="eventsSubMenu">
+                                    <span><i class="bi bi-calendar-event me-2"></i>Events</span>
+                                    <i class="bi bi-chevron-down ms-2 transition-arrow" id="eventsArrow"></i>
                                 </a>
-
-                                <div class="collapse show" id="eventsSubMenu">
+                                <div class="collapse" id="eventsSubMenu">
                                     <ul class="nav flex-column ps-3">
                                         <li class="nav-item">
                                             <a class="nav-link" href="#" data-section="createEventSection" id="navCreateEvent">
-                                                <i class="bi bi-plus-circle me-2"></i>
-                                                Create Event
+                                                <i class="bi bi-plus-circle me-2"></i>Create Event
                                             </a>
                                         </li>
-
                                         <li class="nav-item">
                                             <a class="nav-link" href="#" data-section="viewEventsSection" id="navViewEvents">
-                                                <i class="bi bi-eye me-2"></i>
-                                                View Events
+                                                <i class="bi bi-eye me-2"></i>View Events
                                             </a>
                                         </li>
                                     </ul>
                                 </div>
                             </li>
-
                             <li class="nav-item">
-                                <a class="nav-link active" href="#" data-section="attendanceSection" id="navAttendance">
-                                    <i class="bi bi-people"></i>
-                                    Attendance
+                                <a class="nav-link" href="#" data-section="attendanceSection" id="navAttendance">
+                                    <i class="bi bi-people me-2"></i>Attendance
                                 </a>
                             </li>
-
-                            <li class="nav-item">
-                                <a class="nav-link" href="#" data-section="clubSection" id="navClub">
-                                    <i class="bi bi-people"></i>
-                                    Club
-                                </a>
-                            </li>
-
                             <li class="nav-item">
                                 <a class="nav-link" href="#" data-section="gallerySection" id="navGallery">
-                                    <i class="bi bi-images"></i>
-                                    Gallery
+                                    <i class="bi bi-images me-2"></i>Gallery
                                 </a>
                             </li>
-
+                            <li class="nav-item">
+                                <a class="nav-link" href="#" data-section="clubSection" id="navClub">
+                                    <i class="bi bi-people me-2"></i>Clubs
+                                </a>
+                            </li>
                             <li class="nav-item">
                                 <a class="nav-link" href="#" data-section="generateReportSection" id="navGenerateReport">
-                                    <i class="bi bi-file-earmark-bar-graph me-2"></i>
-                                    Generate Report
+                                    <i class="bi bi-file-earmark-bar-graph me-2"></i>Generate Report
                                 </a>
                             </li>
                         </ul>
@@ -607,61 +625,51 @@ try {
                     <?php endif; ?>
 
                     <section id="dashboardSection" class="section-container d-none">
-                        <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pb-2 mb-3 border-bottom">
-                            <h1 class="h2">Dashboard</h1>
-                            <div class="btn-toolbar mb-2 mb-md-0">
-                                <div class="btn-group me-2">
-                                    <button type="button" class="btn btn-sm btn-outline-secondary">Share</button>
-                                    <button type="button" class="btn btn-sm btn-outline-secondary">Export</button>
-                                </div>
-                                <button type="button" class="btn btn-sm btn-outline-secondary dropdown-toggle">
-                                    <i class="bi bi-calendar"></i>
-                                    This week
-                                </button>
-                            </div>
-                        </div>
-
-                        <div class="row">
-                            <div class="col-md-6 col-lg-3">
-                                <div class="card" aria-label="Total Events">
-                                    <div class="card-body">
-                                        <div class="d-flex justify-content-between">
-                                            <div>
-                                                <h5 class="card-title">Total Events</h5>
-                                                <h2 class="mb-0" id="totalEventsCount">
-                                                    <?= $totalEvents ?>
-                                                </h2>
-                                            </div>
-                                            <div class="card-icon" aria-hidden="true">
-                                                <i class="bi bi-calendar-event"></i>
-                                            </div>
-                                        </div>
+                        <div class="row g-4 mb-4">
+                            <div class="col-md-4">
+                                <div class="card h-100 shadow-sm">
+                                    <div class="card-header bg-secondary text-white fw-bold text-center">
+                                        Events
+                                    </div>
+                                    <div class="card-body text-center">
+                                        <h2 class="mb-0" id="totalEventsCount">
+                                            <?= $totalEvents ?>
+                                        </h2>
                                         <p class="card-text text-muted small mt-2" id="upcomingEventsCount">
-                                            <?= $upcomingCount ?>
-                                            upcoming this week
+                                            <?= $upcomingCount ?> upcoming this week
                                         </p>
+                                        <a href="#" class="btn btn-primary w-100" data-section="viewEventsSection" id="btnViewEvents">View Events</a>
                                     </div>
                                 </div>
-
-                                <div class="col-md-6 col-lg-3">
-                                    <div class="card" aria-label="Attendance">
-                                        <div class="card-body">
-                                            <div class="d-flex justify-content-between">
-                                                <div>
-                                                    <h5 class="card-title">Attendance</h5>
-                                                    <h2 class="mb-0">
-                                                        <?= count($attendances) ?>
-                                                    </h2>
-                                                </div>
-                                                <div class="card-icon" aria-hidden="true">
-                                                    <i class="bi bi-person-check"></i>
-                                                </div>
-                                            </div>
-                                            <p class="card-text text-muted small mt-2">Total attendance records</p>
-                                        </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="card h-100 shadow-sm">
+                                    <div class="card-header bg-secondary text-white fw-bold text-center">
+                                        Attendance
+                                    </div>
+                                    <div class="card-body text-center">
+                                        <h2 class="mb-0">
+                                            <?= count($attendances) ?>
+                                        </h2>
+                                        <p class="card-text text-muted small mt-2">Total attendance records</p>
+                                        <a href="#" class="btn btn-primary w-100" data-section="attendanceSection" id="btnViewAttendance">View Attendance</a>
                                     </div>
                                 </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="card h-100 shadow-sm">
+                                    <div class="card-header bg-secondary text-white fw-bold text-center">
+                                        Clubs
+                                    </div>
+                                    <div class="card-body text-center">
+                                        <h2 class="mb-0">
+                                            <?= isset($allClubs) ? count($allClubs) : 0 ?>
+                                        </h2>
+                                        <p class="card-text text-muted small mt-2">Total clubs created</p>
+                                        <a href="#" class="btn btn-primary w-100" data-section="clubSection" id="btnViewClubs">View Clubs</a>
+                                    </div>
                                 </div>
+                            </div>
                         </div>
                     </section>
 
@@ -900,6 +908,7 @@ try {
                                                             <th>Phone</th>
                                                             <th>Interests</th>
                                                             <th>Why Join</th>
+                                                            <th>Status</th>
                                                             <th>Actions</th>
                                                         </tr>
                                                     </thead>
@@ -914,15 +923,33 @@ try {
                                                                     <td><?= htmlspecialchars($member['interests']) ?></td>
                                                                     <td><?= htmlspecialchars($member['why_join']) ?></td>
                                                                     <td>
-                                                                        <form method="post" style="display:inline;" onsubmit="return confirm('Are you sure you want to delete this student from the club?');">
-                                                                            <input type="hidden" name="delete_member_id" value="<?= $member['id'] ?>">
-                                                                            <button type="submit" class="btn btn-sm btn-danger">Delete</button>
-                                                                        </form>
+                                                                        <span class="badge <?= 
+                                                                            $member['status'] === 'accepted' ? 'bg-success' : 
+                                                                            ($member['status'] === 'declined' ? 'bg-danger' : 'bg-warning') 
+                                                                        ?>">
+                                                                            <?= ucfirst($member['status'] ?? 'pending') ?>
+                                                                        </span>
+                                                                    </td>
+                                                                    <td>
+                                                                        <?php if (!isset($member['status']) || $member['status'] === 'pending'): ?>
+                                                                            <form method="post" style="display:inline;">
+                                                                                <input type="hidden" name="member_id" value="<?= $member['id'] ?>">
+                                                                                <input type="hidden" name="update_member_status" value="1">
+                                                                                <input type="hidden" name="status" value="accepted">
+                                                                                <button type="submit" class="btn btn-sm btn-success">Accept</button>
+                                                                            </form>
+                                                                            <form method="post" style="display:inline;">
+                                                                                <input type="hidden" name="member_id" value="<?= $member['id'] ?>">
+                                                                                <input type="hidden" name="update_member_status" value="1">
+                                                                                <input type="hidden" name="status" value="declined">
+                                                                                <button type="submit" class="btn btn-sm btn-danger">Decline</button>
+                                                                            </form>
+                                                                        <?php endif; ?>
                                                                     </td>
                                                                 </tr>
                                                             <?php endforeach; ?>
                                                         <?php else: ?>
-                                                            <tr><td colspan="7" class="text-center">No club members found.</td></tr>
+                                                            <tr><td colspan="8" class="text-center">No club members found.</td></tr>
                                                         <?php endif; ?>
                                                     </tbody>
                                                 </table>
@@ -1044,6 +1071,7 @@ try {
             </div>
         </div>
 
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
         <script>
             document.addEventListener('DOMContentLoaded', function () {
                 const sidebarToggle = document.getElementById('sidebarToggle');
