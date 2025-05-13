@@ -1,0 +1,23 @@
+{
+  "name": "new-arts_culture_org",
+  "version": "1.0.0",
+  "description": "\u0000#\u0000 \u0000A\u0000R\u0000C\u0000U\u0000-\u0000O\u0000r\u0000g\u0000s\u0000\r\u0000 \u0000",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Jdamas-py/new-arts_culture_org.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Jdamas-py/new-arts_culture_org/issues"
+  },
+  "homepage": "https://github.com/Jdamas-py/new-arts_culture_org#readme",
+  "dependencies": {
+    "bootstrap": "^5.3.6"
+  }
+}
