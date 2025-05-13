@@ -3,7 +3,7 @@ function getDatabaseConnection() {
     $host = 'localhost';
     $user = 'root';
     $pass = '';
-    $db   = 'db_arcu.sql';  // Make sure this matches your database name
+    $db   = 'db_arcu';  // Make sure this matches your database name
 
     $con = new mysqli($host, $user, $pass, $db);
 
